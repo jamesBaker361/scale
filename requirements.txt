@@ -1,0 +1,13 @@
+diffusers
+torch
+transformers
+wandb
+accelerate
+experiment-helpers
+numpy
+pillow
+matplotlib
+torchmetrics
+torchvision
+huggingface_hub
+datasets
