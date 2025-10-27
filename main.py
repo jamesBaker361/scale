@@ -174,8 +174,6 @@ def main(args):
         for b,batch in enumerate(train_loader):
             if b==args.limit:
                 break
-            if b%args.skip_num!=0:
-                continue
 
             with accelerator.accumulate(params):
                 images=batch["image"].to(device,torch_dtype)
