@@ -105,7 +105,7 @@ def main(args):
     dataset=AnimalData(image_processor,tokenizer,dim=2**args.power2_dim)
     accelerator.print("image size ",2**args.power2_dim)
 
-    test_size=len(dataset)*0.1
+    test_size=len(dataset)//10
     train_size=len(dataset)-test_size
 
     
