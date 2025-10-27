@@ -48,6 +48,7 @@ parser.add_argument("--save_dir",type=str,default="weights")
 parser.add_argument("--training_type",type=str,default="noise",help="scale or noise")
 parser.add_argument("--power2_dim",type=int,default=7,help="power of 2 for image dimension")
 parser.add_argument("--batch_size",type=int,default=4)
+parser.add_argument("--load_hf",action="store_true")
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
