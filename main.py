@@ -176,8 +176,8 @@ def main(args):
                 break
 
             with accelerator.accumulate(params):
-                images=batch["image"].to(device,torch_dtype)
-                text=batch["text"].to(device,torch_dtype)
+                images=batch["image"].to(device=device,dtype=torch_dtype)
+                text=batch["text"].to(device=device,dtype=torch_dtype)
                 encoder_hidden_states = text_encoder(text, return_dict=False)[0]
                 
                 
