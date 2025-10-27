@@ -27,6 +27,7 @@ from diffusers import LCMScheduler,DiffusionPipeline,DEISMultistepScheduler,DDIM
 from diffusers.models.attention_processor import IPAdapterAttnProcessor2_0
 from torchvision.transforms.v2 import functional as F_v2
 from torchmetrics.image.fid import FrechetInceptionDistance
+from unet_helpers import *
 
 from transformers import AutoProcessor, CLIPModel
 try:
@@ -45,7 +46,7 @@ parser.add_argument("--lr",type=float,default=0.0001)
 parser.add_argument("--epochs",type=int,default=100)
 parser.add_argument("--limit",type=int,default=-1)
 parser.add_argument("--save_dir",type=str,default="weights")
-parser.add_argument("--training_type",type=str,default="noise",help="scale or noise")
+parser.add_argument("--training_type",type=str,default="noise",help="scale or noise or scale_noise")
 parser.add_argument("--power2_dim",type=int,default=7,help="power of 2 for image dimension")
 parser.add_argument("--batch_size",type=int,default=4)
 parser.add_argument("--load_hf",action="store_true")
@@ -141,6 +142,9 @@ def main(args):
             start_epoch=data["start_epoch"]+1
     except Exception as e:
         accelerator.print(e)
+        
+    if args.training_type=="scale_noise":
+        set_metadata_embedding(unet,1)
 
 
     def save(e:int,state_dict):
@@ -190,6 +194,7 @@ def main(args):
                 bsz = images.shape[0]
                 latents = vae.encode(images).latent_dist.sample()
                 latents = latents * vae.config.scaling_factor
+                metadata=None
                 if args.training_type=="noise":
                     
 
@@ -221,13 +226,41 @@ def main(args):
                     unet_input=torch.stack(input_list)
                     target=torch.stack(target_list)
                     
+                elif args.training_type=="scale_noise":
+                    scales=[random.randint(0,len(scale_noise_steps))]*bsz
+                    timesteps = torch.randint(0, scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+                    
+                    input_list=[]
+                    target_list=[]
+                    for img,scale in zip(images,scales):
+                        size=img.size()[-1]
+                        initial_size=size
+                        for step in range(0,scale+1):
+                            size=size//2
+                        input_img=F.interpolate(img,(size,size))
+                        input_img=F.interpolate(input_img,(initial_size,initial_size))
+                        target_img=F.interpolate(img,(2*size,2*size))
+                        target_img=F.interpolate(target_img,(initial_size,initial_size))
+                        input_list.append(input_img)
+                        target_list.append(target_img)
+                        
+                    noise=torch.stack(input_list)
+                    latents=torch.stack(target_list)
+                    
+                    unet_input=scheduler.add_noise(latents, noise, timesteps)
+                    target=noise
+                    
+                    metadata=prepare_metadata(scales)
+                    
+                    
                 # Get the text embedding for conditioning
                 encoder_hidden_states = text_encoder(text, return_dict=False)[0]
 
                 
 
                 # Predict the noise residual and compute loss
-                model_pred = unet(unet_input, timesteps, encoder_hidden_states, return_dict=False)[0]
+                #model_pred = unet(unet_input, timesteps, encoder_hidden_states, return_dict=False)[0]
+                model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)
 
                 loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 
