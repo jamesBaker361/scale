@@ -13,14 +13,16 @@ class AnimalData(Dataset):
         self.image_processor=image_processor
         self.tokenizer=tokenizer
         self.dim=dim
+        self.mapping=['Butterfly', 'Cat', 'Chicken', 'Cow', 'Dog', 'Elephant', 'Horse', 'Sheep', 'Spider', 'Squirrel' ]
         
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, index):
         image=self.image_processor.preprocess(self.data["image"][index],self.dim,self.dim)[0]
+        print()
         text=self.tokenizer(
-            self.data["label"][index], max_length=self.tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
+            self.mapping.index(self.data[index]["label"]), max_length=self.tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
         )
         return {
             "image":image,
