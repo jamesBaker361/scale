@@ -89,14 +89,14 @@ def main(args):
     unet.requires_grad_(True)
     text_encoder=pipe.text_encoder.to(device,torch_dtype)
     tokenizer=pipe.tokenizer
-    vae=pipe.vae
+    vae=pipe.vae.to(device,torch_dtype)
     scheduler=pipe.scheduler
     step=scheduler.config.num_train_timesteps//args.power2_dim
     scale_noise_steps=[int(x*step) for x in range(args.power2_dim)]
     accelerator.print("noise_steps",scale_noise_steps)
     image_processor=pipe.image_processor
-    text_encoder.requires_grad_(True)
-    vae.requires_grad_(True)
+    text_encoder.requires_grad_(False)
+    vae.requires_grad_(False)
     
     params=[p for p in unet.parameters()]
     
