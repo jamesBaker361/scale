@@ -20,7 +20,6 @@ class AnimalData(Dataset):
     
     def __getitem__(self, index):
         image=self.image_processor.preprocess(self.data["image"][index],self.dim,self.dim)[0]
-        print()
         text=self.tokenizer(
             self.mapping[self.data[index]["label"]], max_length=self.tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
         )
