@@ -252,11 +252,6 @@ def main(args):
                     metadata=prepare_metadata(scales)
                     
                     
-                # Get the text embedding for conditioning
-                encoder_hidden_states = text_encoder(text, return_dict=False)[0]
-
-                
-
                 # Predict the noise residual and compute loss
                 #model_pred = unet(unet_input, timesteps, encoder_hidden_states, return_dict=False)[0]
                 model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)
