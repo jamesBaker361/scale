@@ -85,11 +85,11 @@ def main(args):
 
     pipe=DiffusionPipeline.from_pretrained("Lykon/DreamShaper")
     unet_config=pipe.unet.config
-    unet=UNet2DConditionModel.from_config(unet_config).to(device,torch_dtype)
+    unet=UNet2DConditionModel.from_config(unet_config).to(device) #,torch_dtype)
     unet.requires_grad_(True)
-    text_encoder=pipe.text_encoder.to(device,torch_dtype)
+    text_encoder=pipe.text_encoder.to(device) #,torch_dtype)
     tokenizer=pipe.tokenizer
-    vae=pipe.vae.to(device,torch_dtype)
+    vae=pipe.vae.to(device) #,torch_dtype)
     scheduler=pipe.scheduler
     step=scheduler.config.num_train_timesteps//args.power2_dim
     scale_noise_steps=[int(x*step) for x in range(args.power2_dim)]
@@ -178,9 +178,9 @@ def main(args):
 
             with accelerator.accumulate(params):
                 
-                images=batch["image"].to(device,dtype=torch_dtype)
+                images=batch["image"].to(device) #,dtype=torch_dtype)
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
-                encoder_hidden_states = text_encoder(text, return_dict=False)[0].to(dtype=torch_dtype)
+                encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
                 
                 
                 '''if args.noise_offset:
@@ -258,9 +258,10 @@ def main(args):
                 accelerator.print("unet_input",unet_input.device,unet_input.dtype)
                 accelerator.print("timesteps ",timesteps.device, timesteps.dtype)
                 accelerator.print("encoder", encoder_hidden_states.dtype,encoder_hidden_states.device)
-                model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)[0]
+                with accelerator.autocast():
+                    model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)[0]
 
-                loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 
                 
 
