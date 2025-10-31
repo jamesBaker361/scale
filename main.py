@@ -228,6 +228,9 @@ def main(args):
                             initial_size=size
                             for step in range(0,scale):
                                 size=size//2
+                                
+                            accelerator.print("initial size",initial_size)
+                            accelerator.print("size",size)
                             input_img=F.interpolate(img,size)
                             input_img=F.interpolate(input_img,initial_size)
                             target_img=F.interpolate(img,2*size)
