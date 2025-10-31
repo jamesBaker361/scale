@@ -280,8 +280,7 @@ def main(args):
 
                 # Checks if the accelerator has performed an optimization step behind the scenes
                 if accelerator.sync_gradients:
-                    global_step += 1
-                    accelerator.log({"train_loss": train_loss}, step=global_step)
+                    accelerator.log({"train_loss": train_loss})
                     train_loss = 0.0
 
 
