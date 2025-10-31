@@ -318,7 +318,7 @@ def main(args):
                     
                     noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
                     
-            image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
+            image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
             image=image_processor.postprocess(image,"pil",[True])[0]
             accelerator.log({
                 f"test_{b}":wandb.Image(image)
