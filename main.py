@@ -257,7 +257,7 @@ def main(args):
                 accelerator.print("unet_input",unet_input.device,unet_input.dtype)
                 accelerator.print("timesteps ",timesteps.device, timesteps.dtype)
                 accelerator.print("encoder", encoder_hidden_states.dtype,encoder_hidden_states.device)
-                model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)
+                model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)[0]
 
                 loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 
