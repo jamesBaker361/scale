@@ -96,7 +96,7 @@ def main(args):
         vae=pipe.vae.to(device) #,torch_dtype)
         scheduler=pipe.scheduler
         step=scheduler.config.num_train_timesteps//args.power2_dim
-        scale_noise_steps=[int(x*step) for x in range(args.power2_dim)]
+        scale_noise_steps=[int(x*step) for x in range(args.power2_dim+1)]
         accelerator.print("noise_steps",scale_noise_steps)
         image_processor=pipe.image_processor
         text_encoder.requires_grad_(False)
@@ -214,10 +214,11 @@ def main(args):
                         
                     elif args.training_type=="scale":
                         
-                        scales=[random.randint(0,len(scale_noise_steps)-1)]*bsz
+                        scales=[random.randint(0,len(scale_noise_steps))]*bsz
                         if e==start_epoch and b==0:
                             accelerator.print("scales",scales)
                             accelerator.print("scale noise steps",scale_noise_steps)
+                            accelerator.print("scale nosie steps for s in scales",[scale_noise_steps[s] for s in scales])
                         timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
                         
                         input_list=[]
@@ -225,7 +226,7 @@ def main(args):
                         for img,scale in zip(latents,scales):
                             size=img.size()[-1]
                             initial_size=size
-                            for step in range(0,scale+1):
+                            for step in range(0,scale):
                                 size=size//2
                             input_img=F.interpolate(img,size)
                             input_img=F.interpolate(input_img,initial_size)
