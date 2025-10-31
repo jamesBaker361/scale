@@ -171,6 +171,7 @@ def main(args):
     for e in range(start_epoch,args.epochs+1):
         start=time.time()
         loss_buffer=[]
+        train_loss=0.0
         for b,batch in enumerate(train_loader):
             if b==args.limit:
                 break
