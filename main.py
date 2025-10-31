@@ -214,7 +214,7 @@ def main(args):
                         
                     elif args.training_type=="scale":
                         scales=[random.randint(0,len(scale_noise_steps))]*bsz
-                        timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long()
+                        timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
                         input_list=[]
                         target_list=[]
                         for img,scale in zip(images,scales):
