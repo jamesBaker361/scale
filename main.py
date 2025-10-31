@@ -213,8 +213,13 @@ def main(args):
                         target=noise
                         
                     elif args.training_type=="scale":
-                        scales=[random.randint(0,len(scale_noise_steps))]*bsz
+                        
+                        scales=[random.randint(0,len(scale_noise_steps)-1)]*bsz
+                        if e==start_epoch and b==0:
+                            accelerator.print("scales",scales)
+                            accelerator.print("scale noise steps",scale_noise_steps)
                         timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
+                        
                         input_list=[]
                         target_list=[]
                         for img,scale in zip(latents,scales):
