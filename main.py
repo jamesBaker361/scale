@@ -303,6 +303,7 @@ def main(args):
                 noise = torch.randn_like(latents)
                 
                 for i,t in enumerate(timesteps):
+                    noise=scheduler.scale_model_input(noise, t)
                     
                     model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
                     
