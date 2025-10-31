@@ -1,5 +1,6 @@
 from diffusers.models.unets.unet_2d_condition import *
 
+
 def prepare_metadata(batch_size, metadata, do_classifier_free_guidance, device, dtype,):
     # TODO: make more robust
     if metadata is None:

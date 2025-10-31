@@ -28,6 +28,7 @@ from diffusers.models.attention_processor import IPAdapterAttnProcessor2_0
 from torchvision.transforms.v2 import functional as F_v2
 from torchmetrics.image.fid import FrechetInceptionDistance
 from unet_helpers import *
+from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import retrieve_timesteps
 
 from transformers import AutoProcessor, CLIPModel
 try:
@@ -50,6 +51,7 @@ parser.add_argument("--training_type",type=str,default="noise",help="scale or no
 parser.add_argument("--power2_dim",type=int,default=7,help="power of 2 for image dimension")
 parser.add_argument("--batch_size",type=int,default=4)
 parser.add_argument("--load_hf",action="store_true")
+parser.add_argument("--n_test",type=int,default=4)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
@@ -119,7 +121,7 @@ def main(args):
         # Split the dataset
         train_dataset, test_dataset = random_split(dataset, [train_size, test_size], generator=generator)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
         
         train_loader,test_loader,optimizer,unet,vae,text_encoder=accelerator.prepare(train_loader,test_loader,optimizer,unet,vae,text_encoder)
 
@@ -192,6 +194,8 @@ def main(args):
                     if args.input_perturbation:
                         new_noise = noise + args.input_perturbation * torch.randn_like(noise)'''
                     
+                    if e==start_epoch and b==0:
+                        accelerator.print("images",images.size(),images.shape)
                     bsz = images.shape[0]
                     latents = vae.encode(images).latent_dist.sample()
                     latents = latents * vae.config.scaling_factor
@@ -286,7 +290,35 @@ def main(args):
 
             end=time.time()
             accelerator.print(f"epoch {e} elapsed {end-start}")
+        #inference
+        for b,batch in enumerate(test_loader):
+            text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+            encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
+            timesteps, num_inference_steps = retrieve_timesteps(
+                scheduler, num_inference_steps, device
+            )
+            if args.training_type=="noise":
+            
+                noise = torch.randn_like(latents)
+                
+                for i,t in enumerate(timesteps):
+                    
+                    model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
+                    
+                    noise=scheduler.step(model_pred,t,noise)
+                    
+            image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
+            image=image_processor.postprocess(image,"pil",[True])[0]
+            accelerator.log({
+                f"test_{b}":wandb.Image(image)
+            })
+                
+                
+            
 
+            
+            
+            
 
 if __name__=='__main__':
     print_details()
