@@ -306,7 +306,7 @@ def main(args):
                     
                     model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
                     
-                    noise=scheduler.step(model_pred,t,noise)
+                    noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
                     
             image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
             image=image_processor.postprocess(image,"pil",[True])[0]
