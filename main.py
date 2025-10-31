@@ -52,6 +52,7 @@ parser.add_argument("--power2_dim",type=int,default=7,help="power of 2 for image
 parser.add_argument("--batch_size",type=int,default=4)
 parser.add_argument("--load_hf",action="store_true")
 parser.add_argument("--n_test",type=int,default=4)
+parser.add_argument("--num_inference_steps",type=int,default=10)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
@@ -295,7 +296,7 @@ def main(args):
             text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
             encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
             timesteps, num_inference_steps = retrieve_timesteps(
-                scheduler, num_inference_steps, device
+                scheduler, args.num_inference_steps, device
             )
             if args.training_type=="noise":
             
