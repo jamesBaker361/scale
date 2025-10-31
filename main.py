@@ -217,7 +217,7 @@ def main(args):
                         timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
                         input_list=[]
                         target_list=[]
-                        for img,scale in zip(images,scales):
+                        for img,scale in zip(latents,scales):
                             size=img.size()[-1]
                             initial_size=size
                             for step in range(0,scale+1):
@@ -238,7 +238,7 @@ def main(args):
                         
                         input_list=[]
                         target_list=[]
-                        for img,scale in zip(images,scales):
+                        for img,scale in zip(latents,scales):
                             size=img.size()[-1]
                             initial_size=size
                             for step in range(0,scale+1):
