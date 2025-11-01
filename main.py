@@ -224,6 +224,7 @@ def main(args):
                         input_list=[]
                         target_list=[]
                         for img,scale in zip(latents,scales):
+                            img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
                             for step in range(0,scale):
@@ -231,15 +232,15 @@ def main(args):
                                 
                             accelerator.print("initial size",initial_size)
                             accelerator.print("size",size)
-                            input_img=F.interpolate(img,size)
-                            input_img=F.interpolate(input_img,initial_size)
-                            target_img=F.interpolate(img,2*size)
-                            target_img=F.interpolate(target_img,initial_size)
+                            input_img=F.interpolate(img,(size,size))
+                            input_img=F.interpolate(input_img,(initial_size,initial_size))
+                            target_img=F.interpolate(img,(2*size,2*size))
+                            target_img=F.interpolate(target_img,(initial_size,initial_size))
                             input_list.append(input_img)
                             target_list.append(target_img)
                             
-                        unet_input=torch.stack(input_list).to(device=device)
-                        target=torch.stack(target_list).to(device=device)
+                        unet_input=torch.concat(input_list).to(device=device)
+                        target=torch.concat(target_list).to(device=device)
                         
                     elif args.training_type=="scale_noise":
                         scales=[random.randint(0,len(scale_noise_steps))]*bsz
