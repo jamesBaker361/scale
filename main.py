@@ -232,10 +232,11 @@ def main(args):
                                 
                             accelerator.print("initial size",initial_size)
                             accelerator.print("size",size)
-                            input_img=F.interpolate(img,(size,size))
-                            input_img=F.interpolate(input_img,(initial_size,initial_size))
-                            target_img=F.interpolate(img,(2*size,2*size))
-                            target_img=F.interpolate(target_img,(initial_size,initial_size))
+                            accelerator.print("img size",img.size())
+                            input_img=F.interpolate(img,[size,size])
+                            input_img=F.interpolate(input_img,[initial_size,initial_size])
+                            target_img=F.interpolate(img,[2*size,2*size])
+                            target_img=F.interpolate(target_img,[initial_size,initial_size])
                             input_list.append(input_img)
                             target_list.append(target_img)
                             
