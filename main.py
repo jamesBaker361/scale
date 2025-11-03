@@ -229,10 +229,6 @@ def main(args):
                             initial_size=size
                             for step in range(0,scale):
                                 size=size//2
-                                
-                            accelerator.print("initial size",initial_size)
-                            accelerator.print("size",size)
-                            accelerator.print("img size",img.size())
                             input_img=F.interpolate(img,[size,size])
                             input_img=F.interpolate(input_img,[initial_size,initial_size])
                             target_img=F.interpolate(img,[2*size,2*size])
@@ -250,19 +246,20 @@ def main(args):
                         input_list=[]
                         target_list=[]
                         for img,scale in zip(latents,scales):
+                            img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
-                            for step in range(0,scale+1):
+                            for step in range(0,scale):
                                 size=size//2
-                            input_img=F.interpolate(img,size)
-                            input_img=F.interpolate(input_img,initial_size)
-                            target_img=F.interpolate(img,2*size)
-                            target_img=F.interpolate(target_img,initial_size)
+                            input_img=F.interpolate(img,[size,size])
+                            input_img=F.interpolate(input_img,[initial_size,initial_size])
+                            target_img=F.interpolate(img,[2*size,2*size])
+                            target_img=F.interpolate(target_img,[initial_size,initial_size])
                             input_list.append(input_img)
                             target_list.append(target_img)
                             
-                        noise=torch.stack(input_list)
-                        latents=torch.stack(target_list)
+                        unet_input=torch.concat(input_list).to(device=device)
+                        noise=torch.concat(target_list).to(device=device)
                         
                         unet_input=scheduler.add_noise(latents, noise, timesteps)
                         target=noise
