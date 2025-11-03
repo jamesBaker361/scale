@@ -275,9 +275,9 @@ def main(args):
                     # Predict the noise residual and compute loss
                     #model_pred = unet(unet_input, timesteps, encoder_hidden_states, return_dict=False)[0]
                     if b==0 and e==start_epoch:
-                        accelerator.print("unet_input",unet_input.device,unet_input.dtype)
-                        accelerator.print("timesteps ",timesteps.device, timesteps.dtype)
-                        accelerator.print("encoder", encoder_hidden_states.dtype,encoder_hidden_states.device)
+                        accelerator.print("unet_input",unet_input.device,unet_input.dtype,unet_input.size())
+                        accelerator.print("timesteps ",timesteps.device, timesteps.dtype,timesteps.size())
+                        accelerator.print("encoder", encoder_hidden_states.dtype,encoder_hidden_states.device,encoder_hidden_states.size())
                     #with accelerator.autocast():
                     model_pred=forward_with_metadata(unet,unet_input, timesteps, encoder_hidden_states, metadata=metadata,return_dict=False)[0]
 
@@ -308,6 +308,9 @@ def main(args):
         with torch.no_grad():
             for b,batch in enumerate(test_loader):
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+                if b==0:
+                    images=batch["image"]
+                    latents = vae.encode(images).latent_dist.sample()
                 encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
                 timesteps, num_inference_steps = retrieve_timesteps(
                     scheduler, args.num_inference_steps, device
@@ -327,6 +330,7 @@ def main(args):
                     noise=torch.ones_like(latents)* random.uniform(-1,1)
                     
                     for i,t in enumerate(timesteps):
+                        
                         noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
                         
                         
