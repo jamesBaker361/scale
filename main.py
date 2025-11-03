@@ -29,6 +29,7 @@ from torchvision.transforms.v2 import functional as F_v2
 from torchmetrics.image.fid import FrechetInceptionDistance
 from unet_helpers import *
 from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import retrieve_timesteps
+from image_utils import concat_images_horizontally
 
 from transformers import AutoProcessor, CLIPModel
 try:
@@ -320,9 +321,11 @@ def main(args):
         #inference
         with torch.no_grad():
             for b,batch in enumerate(test_loader):
+                
                 if b==args.limit:
                     break
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+                intermediate_list=[]
                 if b==0:
                     images=batch["image"]
                     latents = vae.encode(images).latent_dist.sample()
@@ -341,6 +344,8 @@ def main(args):
                         
                         noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
                         
+                        intermediate_list.append(noise)
+                        
                 if args.training_type=="scale":
                     noise=torch.ones_like(latents)* random.uniform(-1,1)
                     
@@ -350,12 +355,23 @@ def main(args):
                         
                         noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
                         
+                        intermediate_list.append(noise)
+                        
                         
                 image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
-                for i in image:
+                for n,i in enumerate(image):
                     accelerator.log({
                         f"test_{b}":wandb.Image(i)
+                    })
+                    concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
+                    accelerator.print("concat ",concat_images.size())
+                    concat_images=[vae.decode(img)/vae.config.scaling_factor for img in concat_images]
+                    concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
+                    
+                    
+                    accelerator.log({
+                        f"concat_test_{b}":wandb.Image(concat_images_horizontally(concat_images))
                     })
                 
                 
