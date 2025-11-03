@@ -20,7 +20,7 @@
 
 #SBATCH --error=slurm/generic/%j.err   # STDERR output file (optional)
 
-#SBATCH --exclude=gpuk[001-012]
+#SBATCH --exclude=gpuk[001-012],gpu[005-006,015-018,027-030],gpuc[003-004]
 
 day=$(date +'%m/%d/%Y %R')
 echo "gpu"  ${day} $SLURM_JOBID "node_list" $SLURM_NODELIST $@  "\n" >> jobs.txt
