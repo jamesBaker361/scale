@@ -95,8 +95,8 @@ def main(args):
         tokenizer=pipe.tokenizer
         vae=pipe.vae.to(device) #,torch_dtype)
         scheduler=pipe.scheduler
-        step=scheduler.config.num_train_timesteps//(args.power2_dim-1)
-        scale_noise_steps=[int(x*step) for x in range(args.power2_dim)][:-1]+[1000]
+        step=scheduler.config.num_train_timesteps//(args.power2_dim)
+        scale_noise_steps=[int(x*step) for x in range(args.power2_dim+1)][:-1]+[1000]
         scale_steps=[]
         s=1
         for _ in scale_noise_steps:
@@ -320,6 +320,8 @@ def main(args):
         #inference
         with torch.no_grad():
             for b,batch in enumerate(test_loader):
+                if b==args.limit:
+                    break
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
                 if b==0:
                     images=batch["image"]
