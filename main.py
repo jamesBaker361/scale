@@ -352,10 +352,11 @@ def main(args):
                         
                         
                 image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
-                image=image_processor.postprocess(image.detach().cpu(),"pil",[True])[0]
-                accelerator.log({
-                    f"test_{b}":wandb.Image(image)
-                })
+                image=image_processor.postprocess(image.detach().cpu(),"pil",[True])
+                for i in image:
+                    accelerator.log({
+                        f"test_{b}":wandb.Image(i)
+                    })
                 
                 
             
