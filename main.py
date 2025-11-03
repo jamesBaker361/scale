@@ -219,7 +219,12 @@ def main(args):
                             accelerator.print("scales",scales)
                             accelerator.print("scale noise steps",scale_noise_steps)
                             accelerator.print("scale nosie steps for s in scales",[scale_noise_steps[s] for s in scales])
-                        timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
+                        try:
+                            timesteps=torch.tensor([scale_noise_steps[s] for s in scales]).long().to(device=device)
+                        except IndexError:
+                            accelerator.print(scales)
+                            accelerator.print(scale_noise_steps)
+                            raise IndexError()
                         
                         input_list=[]
                         target_list=[]
