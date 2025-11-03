@@ -95,9 +95,16 @@ def main(args):
         tokenizer=pipe.tokenizer
         vae=pipe.vae.to(device) #,torch_dtype)
         scheduler=pipe.scheduler
-        step=scheduler.config.num_train_timesteps//args.power2_dim
-        scale_noise_steps=[int(x*step) for x in range(args.power2_dim+1)]
+        step=scheduler.config.num_train_timesteps//(args.power2_dim-1)
+        scale_noise_steps=[int(x*step) for x in range(args.power2_dim)][:-1]+[1000]
+        scale_steps=[]
+        s=1
+        for _ in scale_noise_steps:
+            scale_steps.append(s)
+            s=s*2
+        scale_steps=scale_steps[::-1]
         accelerator.print("noise_steps",scale_noise_steps)
+        accelerator.print("scale steps",scale_steps)
         image_processor=pipe.image_processor
         text_encoder.requires_grad_(False)
         vae.requires_grad_(False)
@@ -232,8 +239,7 @@ def main(args):
                             img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
-                            for step in range(0,scale):
-                                size=size//2
+                            size=scale_steps[scale]
                             try:
                                 input_img=F.interpolate(img,[size,size])
                                 input_img=F.interpolate(input_img,[initial_size,initial_size])
@@ -258,8 +264,7 @@ def main(args):
                             img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
-                            for step in range(0,scale):
-                                size=size//2
+                            size=scale_steps[scale]
                             try:
                                 input_img=F.interpolate(img,[size,size])
                                 input_img=F.interpolate(input_img,[initial_size,initial_size])
