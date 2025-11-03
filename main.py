@@ -318,6 +318,13 @@ def main(args):
                         
                         noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
                         
+                if args.training_type=="scale":
+                    noise=torch.ones_like(latents)* random.uniform(-1,1)
+                    
+                    for i,t in enumerate(timesteps):
+                        noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
+                        
+                        
                 image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True])[0]
                 accelerator.log({
