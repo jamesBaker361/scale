@@ -300,28 +300,29 @@ def main(args):
             end=time.time()
             accelerator.print(f"epoch {e} elapsed {end-start}")
         #inference
-        for b,batch in enumerate(test_loader):
-            text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
-            encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
-            timesteps, num_inference_steps = retrieve_timesteps(
-                scheduler, args.num_inference_steps, device
-            )
-            if args.training_type=="noise":
-            
-                noise = torch.randn_like(latents)
+        with torch.no_grad():
+            for b,batch in enumerate(test_loader):
+                text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+                encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
+                timesteps, num_inference_steps = retrieve_timesteps(
+                    scheduler, args.num_inference_steps, device
+                )
+                if args.training_type=="noise":
                 
-                for i,t in enumerate(timesteps):
-                    noise=scheduler.scale_model_input(noise, t)
+                    noise = torch.randn_like(latents)
                     
-                    model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
-                    
-                    noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
-                    
-            image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
-            image=image_processor.postprocess(image,"pil",[True])[0]
-            accelerator.log({
-                f"test_{b}":wandb.Image(image)
-            })
+                    for i,t in enumerate(timesteps):
+                        noise=scheduler.scale_model_input(noise, t)
+                        
+                        model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
+                        
+                        noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
+                        
+                image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
+                image=image_processor.postprocess(image.detach().cpu(),"pil",[True])[0]
+                accelerator.log({
+                    f"test_{b}":wandb.Image(image)
+                })
                 
                 
             
