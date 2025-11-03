@@ -234,10 +234,14 @@ def main(args):
                             initial_size=size
                             for step in range(0,scale):
                                 size=size//2
-                            input_img=F.interpolate(img,[size,size])
-                            input_img=F.interpolate(input_img,[initial_size,initial_size])
-                            target_img=F.interpolate(img,[2*size,2*size])
-                            target_img=F.interpolate(target_img,[initial_size,initial_size])
+                            try:
+                                input_img=F.interpolate(img,[size,size])
+                                input_img=F.interpolate(input_img,[initial_size,initial_size])
+                                target_img=F.interpolate(img,[2*size,2*size])
+                                target_img=F.interpolate(target_img,[initial_size,initial_size])
+                            except RuntimeError:
+                                accelerator.print("runtime error, scale:", scale,"size", size,"img size",initial_size)
+                                raise RuntimeError()
                             input_list.append(input_img)
                             target_list.append(target_img)
                             
