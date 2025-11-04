@@ -251,9 +251,9 @@ def main(args):
                                 accelerator.print("runtime error, scale:", scale,"size", size,"img size",initial_size)
                                 raise RuntimeError()
                             if args.training_type=="scale_vae":
-                                input_img=vae.encode(input_img).latent_dist().sample()
+                                input_img=vae.encode(input_img).latent_dist.sample()
                                 input_img=input_img * vae.config.scaling_factor
-                                target_img=vae.encode(target_img).latent_dist().sample()
+                                target_img=vae.encode(target_img).latent_dist.sample()
                                 target_img=target_img * vae.config.scaling_factor
                             input_list.append(input_img)
                             target_list.append(target_img)
