@@ -223,7 +223,7 @@ def main(args):
                         
                     elif args.training_type=="scale" or args.training_type=="scale_vae":
                         
-                        scales=[random.randint(0,len(scale_noise_steps))]*bsz
+                        scales=[random.randint(0,len(scale_noise_steps)-1) for _ in range(bsz)]
                         if e==start_epoch and b==0:
                             accelerator.print("scales",scales)
                             accelerator.print("scale noise steps",scale_noise_steps)
