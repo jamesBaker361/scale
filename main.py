@@ -206,10 +206,11 @@ def main(args):
                     if e==start_epoch and b==0:
                         accelerator.print("images",images.size(),images.shape)
                     bsz = images.shape[0]
-                    latents = vae.encode(images).latent_dist.sample()
-                    latents = latents * vae.config.scaling_factor
+                    
                     metadata=None
                     if args.training_type=="noise":
+                        latents = vae.encode(images).latent_dist.sample()
+                        latents = latents * vae.config.scaling_factor
                         
 
                         # Sample noise that we'll add to the latents
@@ -220,7 +221,7 @@ def main(args):
                         unet_input = scheduler.add_noise(latents, noise, timesteps)
                         target=noise
                         
-                    elif args.training_type=="scale":
+                    elif args.training_type=="scale" or args.training_type=="scale_vae":
                         
                         scales=[random.randint(0,len(scale_noise_steps))]*bsz
                         if e==start_epoch and b==0:
@@ -236,7 +237,7 @@ def main(args):
                         
                         input_list=[]
                         target_list=[]
-                        for img,scale in zip(latents,scales):
+                        for img,scale in zip(images,scales):
                             img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
@@ -249,6 +250,11 @@ def main(args):
                             except RuntimeError:
                                 accelerator.print("runtime error, scale:", scale,"size", size,"img size",initial_size)
                                 raise RuntimeError()
+                            if args.training_type=="scale_vae":
+                                input_img=vae.encode(input_img).latent_dist().sample()
+                                input_img=input_img * vae.config.scaling_factor
+                                target_img=vae.encode(target_img).latent_dist().sample()
+                                target_img=target_img * vae.config.scaling_factor
                             input_list.append(input_img)
                             target_list.append(target_img)
                             
@@ -261,7 +267,7 @@ def main(args):
                         
                         input_list=[]
                         target_list=[]
-                        for img,scale in zip(latents,scales):
+                        for img,scale in zip(images,scales):
                             img=img.unsqueeze(0)
                             size=img.size()[-1]
                             initial_size=size
@@ -346,8 +352,12 @@ def main(args):
                         
                         intermediate_list.append(noise)
                         
-                if args.training_type=="scale":
-                    noise=torch.ones_like(latents)* random.uniform(-1,1)
+                if args.training_type=="scale" or args.training_type=="scale_vae":
+                    #if args.training_type=="scale":
+                    noise=torch.ones_like(images)* random.uniform(-1,1)
+                    if args.training_type=="scale_vae":
+                        noise=vae.encode(noise).latent_dist.sample()
+                        noise=noise * vae.config.scaling_factor
                     
                     for i,t in enumerate(timesteps):
                         if i==0 and b==0:
@@ -357,8 +367,8 @@ def main(args):
                         
                         intermediate_list.append(noise)
                         
-                        
-                image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
+                if args.training_type=="scale_vae" or args.training_type=="noise":    
+                    image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
                 for n,i in enumerate(image):
                     accelerator.log({
