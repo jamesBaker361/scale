@@ -91,6 +91,17 @@ def main(args):
         pipe=DiffusionPipeline.from_pretrained("Lykon/DreamShaper")
         unet_config=pipe.unet.config
         unet=UNet2DConditionModel.from_config(unet_config).to(device) #,torch_dtype)
+        if args.training_type=="scale":
+            unet.conv_in=torch.nn.Conv2d(3,
+                                         unet.conv_in.out_channels,
+                                         unet.conv_in.kernel_size,
+                                         unet.conv_in.stride,
+                                         unet.conv_in.padding)
+            unet.conv_out=torch.nn.Conv2d(unet.conv_in.in_channels,
+                                         3,
+                                         unet.conv_in.kernel_size,
+                                         unet.conv_in.stride,
+                                         unet.conv_in.padding)
         unet.requires_grad_(True)
         text_encoder=pipe.text_encoder.to(device) #,torch_dtype)
         tokenizer=pipe.tokenizer
