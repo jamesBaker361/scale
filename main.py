@@ -380,6 +380,8 @@ def main(args):
                         
                 if args.training_type=="scale_vae" or args.training_type=="noise":    
                     image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
+                else:
+                    image=noise
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
                 for n,i in enumerate(image):
                     accelerator.log({
