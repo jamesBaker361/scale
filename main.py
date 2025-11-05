@@ -97,11 +97,11 @@ def main(args):
                                          unet.conv_in.kernel_size,
                                          unet.conv_in.stride,
                                          unet.conv_in.padding)
-            unet.conv_out=torch.nn.Conv2d(unet.conv_in.in_channels,
+            unet.conv_out=torch.nn.Conv2d(unet.conv_out.in_channels,
                                          3,
-                                         unet.conv_in.kernel_size,
-                                         unet.conv_in.stride,
-                                         unet.conv_in.padding)
+                                         unet.conv_out.kernel_size,
+                                         unet.conv_out.stride,
+                                         unet.conv_out.padding)
         unet.requires_grad_(True)
         text_encoder=pipe.text_encoder.to(device) #,torch_dtype)
         tokenizer=pipe.tokenizer
@@ -387,7 +387,8 @@ def main(args):
                     })
                     concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
                     accelerator.print("concat ",concat_images.size())
-                    concat_images=[vae.decode(img)/vae.config.scaling_factor for img in concat_images]
+                    if args.training_type=="scale_noise" or args.training_type=="noise":
+                        concat_images=[vae.decode(img)/vae.config.scaling_factor for img in concat_images]
                     concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
                     
                     
