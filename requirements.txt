@@ -3,7 +3,7 @@ torch
 transformers
 wandb
 accelerate
-experiment-helpers
+git+https://github.com/jamesBaker361/helpful.git
 numpy
 pillow
 matplotlib
