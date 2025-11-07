@@ -72,14 +72,14 @@ def main(args):
                 accelerator.init_trackers(project_name=args.project_name,config=vars(args))
 
                 api=HfApi()
-                api.create_repo(args.name,exist_ok=True)
+                api.create_repo(args.repo_id,exist_ok=True)
             except HfHubHTTPError:
                 print("hf hub error!")
                 time.sleep(random.randint(5,120))
                 accelerator.init_trackers(project_name=args.project_name,config=vars(args))
 
                 api=HfApi()
-                api.create_repo(args.name,exist_ok=True)
+                api.create_repo(args.repo_id,exist_ok=True)
 
         
 
@@ -148,7 +148,7 @@ def main(args):
         
         train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder=accelerator.prepare(train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder)
 
-        save_subdir=os.path.join(args.save_dir,args.name)
+        save_subdir=os.path.join(args.save_dir,args.repo_id)
         os.makedirs(save_subdir,exist_ok=True)
 
         WEIGHTS_NAME="diffusion_pytorch_model.safetensors"
@@ -160,8 +160,8 @@ def main(args):
         start_epoch=1
         try:
             if args.load_hf:
-                pretrained_weights_path=api.hf_hub_download(args.name,WEIGHTS_NAME,force_download=True)
-                pretrained_config_path=api.hf_hub_download(args.name,CONFIG_NAME,force_download=True)
+                pretrained_weights_path=api.hf_hub_download(args.repo_id,WEIGHTS_NAME,force_download=True)
+                pretrained_config_path=api.hf_hub_download(args.repo_id,CONFIG_NAME,force_download=True)
                 unet.load_state_dict(torch.load(pretrained_weights_path,weights_only=True),strict=False)
                 with open(pretrained_config_path,"r") as f:
                     data=json.load(f)
