@@ -44,7 +44,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument("--mixed_precision",type=str,default="fp16")
 parser.add_argument("--project_name",type=str,default="scale")
 parser.add_argument("--gradient_accumulation_steps",type=int,default=4)
-parser.add_argument("--name",type=str,default="jlbaker361/model",help="name on hf")
+parser.add_argument("--repo_id",type=str,default="jlbaker361/model",help="name on hf")
 parser.add_argument("--lr",type=float,default=0.0001)
 parser.add_argument("--epochs",type=int,default=2)
 parser.add_argument("--limit",type=int,default=10)
@@ -382,7 +382,7 @@ def main(args):
             accelerator.log({
                 "avg_loss":np.mean(loss_buffer)
             })
-            save_state_dict(unet.state_dict(),e,save_path,config_path,repo_id=args.model,api=api,accelerator=accelerator)
+            save_state_dict(unet.state_dict(),e,save_path,config_path,repo_id=args.repo_id,api=api,accelerator=accelerator)
             if e%args.val_interval==0:
                 with torch.no_grad():
                     inference(val_loader,"val")
