@@ -55,6 +55,7 @@ parser.add_argument("--batch_size",type=int,default=4)
 parser.add_argument("--load_hf",action="store_true")
 parser.add_argument("--n_test",type=int,default=4)
 parser.add_argument("--num_inference_steps",type=int,default=10)
+parser.add_argument("--val_interval",type=int,default=10)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
@@ -132,19 +133,20 @@ def main(args):
         dataset=AnimalData(image_processor,tokenizer,dim=2**args.power2_dim)
         accelerator.print("image size ",2**args.power2_dim)
 
-        test_size=len(dataset)//10
-        train_size=len(dataset)-test_size
+        test_size=int(len(dataset)//10)
+        train_size=int(len(dataset)-(test_size*2))
 
         
         # Set seed for reproducibility
         generator = torch.Generator().manual_seed(42)
 
         # Split the dataset
-        train_dataset, test_dataset = random_split(dataset, [train_size, test_size], generator=generator)
+        train_dataset, test_dataset,val_dataset = random_split(dataset, [train_size, test_size,test_size], generator=generator)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_loader=DataLoader(val_dataset,batch_size=1,shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
         
-        train_loader,test_loader,optimizer,unet,vae,text_encoder=accelerator.prepare(train_loader,test_loader,optimizer,unet,vae,text_encoder)
+        train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder=accelerator.prepare(train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder)
 
         save_subdir=os.path.join(args.save_dir,args.name)
         os.makedirs(save_subdir,exist_ok=True)
@@ -166,6 +168,68 @@ def main(args):
                 start_epoch=data["start_epoch"]+1
         except Exception as e:
             accelerator.print(e)
+            
+        def inference(d_loader,label):
+            for b,batch in enumerate(d_loader):
+                
+                if b==args.limit:
+                    break
+                text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+                intermediate_list=[]
+                if b==0:
+                    images=batch["image"]
+                    latents = vae.encode(images).latent_dist.sample()
+                encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
+                timesteps, num_inference_steps = retrieve_timesteps(
+                    scheduler, args.num_inference_steps, device
+                )
+                if args.training_type=="noise":
+                
+                    noise = torch.randn_like(latents)
+                    
+                    for i,t in enumerate(timesteps):
+                        noise=scheduler.scale_model_input(noise, t)
+                        
+                        model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
+                        
+                        noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
+                        
+                        intermediate_list.append(noise)
+                        
+                if args.training_type=="scale" or args.training_type=="scale_vae":
+                    #if args.training_type=="scale":
+                    noise=torch.ones_like(images)* random.uniform(-1,1)
+                    if args.training_type=="scale_vae":
+                        noise=vae.encode(noise).latent_dist.sample()
+                        noise=noise * vae.config.scaling_factor
+                    
+                    for i,t in enumerate(timesteps):
+                        if i==0 and b==0:
+                            accelerator.print("noise",noise.size())
+                        
+                        noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
+                        
+                        intermediate_list.append(noise)
+                        
+                if args.training_type=="scale_vae" or args.training_type=="noise":    
+                    image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
+                else:
+                    image=noise
+                image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
+                for n,i in enumerate(image):
+                    accelerator.log({
+                        f"{label}_{b}":wandb.Image(i)
+                    })
+                    concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
+                    accelerator.print("concat ",concat_images.size())
+                    if args.training_type=="scale_noise" or args.training_type=="noise":
+                        concat_images=[vae.decode(img)/vae.config.scaling_factor for img in concat_images]
+                    concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
+                    
+                    
+                    accelerator.log({
+                        f"concat_{label}_{b}":wandb.Image(concat_images_horizontally(concat_images))
+                    })
             
         if args.training_type=="scale_noise":
             set_metadata_embedding(unet,1)
@@ -305,6 +369,7 @@ def main(args):
                         accelerator.clip_grad_norm_(unet.parameters(), args.max_grad_norm)'''
                     optimizer.step()
                     optimizer.zero_grad()
+                    loss_buffer.append(loss.cpu().detach().numpy())
 
                 # Checks if the accelerator has performed an optimization step behind the scenes
                 if accelerator.sync_gradients:
@@ -313,70 +378,17 @@ def main(args):
 
 
             end=time.time()
-            accelerator.print(f"epoch {e} elapsed {end-start}")
+            accelerator.print(f"epoch {e} elapsed {end-start} avg loss {np.mean(loss_buffer)}")
+            accelerator.log({
+                "avg_loss":np.mean(loss_buffer)
+            })
             save_state_dict(unet.state_dict(),e,save_path,config_path,repo_id=args.model,api=api,accelerator=accelerator)
+            if e%args.val_interval==0:
+                with torch.no_grad():
+                    inference(val_loader,"val")
         #inference
         with torch.no_grad():
-            for b,batch in enumerate(test_loader):
-                
-                if b==args.limit:
-                    break
-                text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
-                intermediate_list=[]
-                if b==0:
-                    images=batch["image"]
-                    latents = vae.encode(images).latent_dist.sample()
-                encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
-                timesteps, num_inference_steps = retrieve_timesteps(
-                    scheduler, args.num_inference_steps, device
-                )
-                if args.training_type=="noise":
-                
-                    noise = torch.randn_like(latents)
-                    
-                    for i,t in enumerate(timesteps):
-                        noise=scheduler.scale_model_input(noise, t)
-                        
-                        model_pred=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
-                        
-                        noise=scheduler.step(model_pred,t,noise,return_dict=False)[0]
-                        
-                        intermediate_list.append(noise)
-                        
-                if args.training_type=="scale" or args.training_type=="scale_vae":
-                    #if args.training_type=="scale":
-                    noise=torch.ones_like(images)* random.uniform(-1,1)
-                    if args.training_type=="scale_vae":
-                        noise=vae.encode(noise).latent_dist.sample()
-                        noise=noise * vae.config.scaling_factor
-                    
-                    for i,t in enumerate(timesteps):
-                        if i==0 and b==0:
-                            accelerator.print("noise",noise.size())
-                        
-                        noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
-                        
-                        intermediate_list.append(noise)
-                        
-                if args.training_type=="scale_vae" or args.training_type=="noise":    
-                    image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
-                else:
-                    image=noise
-                image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
-                for n,i in enumerate(image):
-                    accelerator.log({
-                        f"test_{b}":wandb.Image(i)
-                    })
-                    concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
-                    accelerator.print("concat ",concat_images.size())
-                    if args.training_type=="scale_noise" or args.training_type=="noise":
-                        concat_images=[vae.decode(img)/vae.config.scaling_factor for img in concat_images]
-                    concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
-                    
-                    
-                    accelerator.log({
-                        f"concat_test_{b}":wandb.Image(concat_images_horizontally(concat_images))
-                    })
+            inference(test_loader,"test")
                 
                 
             
