@@ -3,6 +3,7 @@
 import os
 import argparse
 from experiment_helpers.gpu_details import print_details
+from experiment_helpers.saving import save_state_dict
 from datasets import load_dataset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -169,28 +170,6 @@ def main(args):
         if args.training_type=="scale_noise":
             set_metadata_embedding(unet,1)
 
-
-        def save(e:int,state_dict):
-            #state_dict=???
-            print("state dict len",len(state_dict))
-            torch.save(state_dict,save_path)
-            with open(config_path,"w+") as config_file:
-                data={"start_epoch":e}
-                json.dump(data,config_file, indent=4)
-                pad = " " * 2048  # ~1KB of padding
-                config_file.write(pad)
-            print(f"saved {save_path}")
-            try:
-                api.upload_file(path_or_fileobj=save_path,
-                                        path_in_repo=WEIGHTS_NAME,
-                                        repo_id=args.name)
-                api.upload_file(path_or_fileobj=config_path,path_in_repo=CONFIG_NAME,
-                                        repo_id=args.name)
-                print(f"uploaded {args.name} to hub")
-            except Exception as e:
-                accelerator.print("failed to upload")
-                accelerator.print(e)
-
         for e in range(start_epoch,args.epochs+1):
             start=time.time()
             loss_buffer=[]
@@ -335,6 +314,7 @@ def main(args):
 
             end=time.time()
             accelerator.print(f"epoch {e} elapsed {end-start}")
+            save_state_dict(unet.state_dict(),e,save_path,config_path,api=api,accelerator=accelerator)
         #inference
         with torch.no_grad():
             for b,batch in enumerate(test_loader):
