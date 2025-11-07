@@ -314,7 +314,7 @@ def main(args):
 
             end=time.time()
             accelerator.print(f"epoch {e} elapsed {end-start}")
-            save_state_dict(unet.state_dict(),e,save_path,config_path,api=api,accelerator=accelerator)
+            save_state_dict(unet.state_dict(),e,save_path,config_path,repo_id=args.model,api=api,accelerator=accelerator)
         #inference
         with torch.no_grad():
             for b,batch in enumerate(test_loader):
