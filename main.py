@@ -221,10 +221,10 @@ def main(args):
                         f"{label}_{b}":wandb.Image(i)
                     })
                     concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
-                    accelerator.print("concat ",concat_images.size())
+                    #accelerator.print("concat ",concat_images.size())
                     if args.training_type=="scale_vae" or args.training_type=="noise":
                         concat_images=torch.cat([vae.decode(img.unsqueeze(0)).sample/vae.config.scaling_factor for img in concat_images])
-                        accelerator.print("concat decoded",concat_images.size())
+                        #accelerator.print("concat decoded",concat_images.size())
                     concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
                     
                     
