@@ -367,7 +367,7 @@ def main(args):
                     # Backpropagate
                     accelerator.backward(loss)
                     if accelerator.sync_gradients:
-                        accelerator.clip_grad_norm_(unet.parameters(), 1.0)
+                        accelerator.clip_grad_norm_(params, 1.0)
                     optimizer.step()
                     optimizer.zero_grad()
                     loss_buffer.append(loss.cpu().detach().numpy())
