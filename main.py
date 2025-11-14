@@ -194,6 +194,7 @@ def main(args):
                 if b==args.limit:
                     break
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
+                text_str=batch["text_str"]
                 intermediate_list=[]
                 if b==0:
                     images=batch["image"]
@@ -237,8 +238,11 @@ def main(args):
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
                 for n,i in enumerate(image):
                     accelerator.log({
-                        f"{label}_{b}":wandb.Image(i)
+                        f"{label}_{text_str[n]}":wandb.Image(i)
                     })
+                    '''accelerator.log({
+                        f"{label}_{b}":wandb.Image(i)
+                    })'''
                     concat_images=torch.stack([intermediate_list[i][n] for i,t in enumerate(timesteps)])
                     #accelerator.print("concat ",concat_images.size())
                     if args.training_type=="scale_vae" or args.training_type=="noise":
@@ -247,9 +251,9 @@ def main(args):
                     concat_images=image_processor.postprocess(concat_images.detach().cpu(),"pil",[True]*concat_images.size()[0])
                     
                     
-                    accelerator.log({
+                    '''accelerator.log({
                         f"concat_{label}_{b}":wandb.Image(concat_images_horizontally(concat_images))
-                    })
+                    })'''
             
         if args.training_type=="scale_noise":
             set_metadata_embedding(unet,1)
