@@ -226,6 +226,7 @@ def main(args):
                     for i,t in enumerate(timesteps):
                         if i==0 and b==0:
                             accelerator.print("noise",noise.size())
+                            accelerator.print("text_str",text_str)
                         
                         noise=forward_with_metadata(unet,noise, t, encoder_hidden_states, metadata=None,return_dict=False)[0]
                         
