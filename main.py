@@ -9,6 +9,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import json
 from data_helpers import AnimalData
+from torch.optim.lr_scheduler import LambdaLR
 
 import torch
 import accelerate
@@ -56,6 +57,7 @@ parser.add_argument("--load_hf",action="store_true")
 parser.add_argument("--n_test",type=int,default=4)
 parser.add_argument("--num_inference_steps",type=int,default=10)
 parser.add_argument("--val_interval",type=int,default=10)
+parser.add_argument("--warmup_steps",type=int,default=2000)
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
@@ -126,7 +128,20 @@ def main(args):
         params=[p for p in unet.parameters()]
         
         optimizer=torch.optim.AdamW(params,args.lr)
+        
+        def cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps):
+            def lr_lambda(step):
+                # warmup
+                if step < warmup_steps:
+                    return step / warmup_steps
+                
+                # cosine decay
+                progress = (step - warmup_steps) / (total_steps - warmup_steps)
+                return 0.5 * (1 + torch.cos(torch.tensor(progress * 3.1415926535))).item()
 
+            return LambdaLR(optimizer, lr_lambda)
+
+        
         #dataset=??????
         
         
@@ -146,7 +161,11 @@ def main(args):
         val_loader=DataLoader(val_dataset,batch_size=1,shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
         
-        train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder=accelerator.prepare(train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder)
+        total_steps=len(train_loader)*args.epochs
+        
+        lr_scheduler=cosine_schedule_with_warmup(optimizer,args.warmup_steps,total_steps)
+        
+        train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder,lr_scheduler=accelerator.prepare(train_loader,test_loader,val_loader,optimizer,unet,vae,text_encoder,lr_scheduler)
 
         save_subdir=os.path.join(args.save_dir,args.repo_id)
         os.makedirs(save_subdir,exist_ok=True)
@@ -370,6 +389,7 @@ def main(args):
                         accelerator.clip_grad_norm_(params, 1.0)
                     optimizer.step()
                     optimizer.zero_grad()
+                    lr_scheduler.step()
                     loss_buffer.append(loss.cpu().detach().numpy())
 
                 # Checks if the accelerator has performed an optimization step behind the scenes
