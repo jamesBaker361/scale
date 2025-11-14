@@ -26,6 +26,6 @@ class AnimalData(Dataset):
         return {
             "image":image,
             "text":text,
-            "text_str":self.data["label"][index],
+            "text_str":self.mapping[self.data[index]["label"]],
         }
         
