@@ -270,6 +270,7 @@ def main(args):
             accelerator.log({
                 f"{label}_fid":fid_score
             })
+            accelerator.print(f"{label}_fid",fid_score)
                 
             
         if args.training_type=="scale_noise":
