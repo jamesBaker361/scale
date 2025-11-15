@@ -32,6 +32,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from unet_helpers import *
 from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import retrieve_timesteps
 from image_utils import concat_images_horizontally
+from torcheval.metrics.image.fid import FrechetInceptionDistance
 
 from transformers import AutoProcessor, CLIPModel
 try:
@@ -189,6 +190,9 @@ def main(args):
             accelerator.print(e)
             
         def inference(d_loader,label):
+            fid=FrechetInceptionDistance()
+            real=[]
+            fake=[]
             for b,batch in enumerate(d_loader):
                 
                 if b==args.limit:
@@ -196,8 +200,10 @@ def main(args):
                 text=batch["text"]['input_ids'].to(device)#,dtype=torch_dtype)
                 text_str=batch["text_str"]
                 intermediate_list=[]
+                images=batch["image"]
+                real.append(images)
                 if b==0:
-                    images=batch["image"]
+                    
                     latents = vae.encode(images).latent_dist.sample()
                 encoder_hidden_states = text_encoder(text, return_dict=False)[0] #.to(dtype=torch_dtype)
                 timesteps, num_inference_steps = retrieve_timesteps(
@@ -236,6 +242,7 @@ def main(args):
                     image = vae.decode(noise / vae.config.scaling_factor, return_dict=False)[0]
                 else:
                     image=noise
+                fake.append(image)
                 image=image_processor.postprocess(image.detach().cpu(),"pil",[True]*image.size()[0])
                 for n,i in enumerate(image):
                     accelerator.log({
@@ -255,6 +262,15 @@ def main(args):
                     '''accelerator.log({
                         f"concat_{label}_{b}":wandb.Image(concat_images_horizontally(concat_images))
                     })'''
+            real=torch.cat(real)
+            fake=torch.cat(fake)
+            fid.update(real,True)
+            fid.update(fake,False)
+            fid_score = fid.compute().item()
+            accelerator.log({
+                f"{label}_fid":fid_score
+            })
+                
             
         if args.training_type=="scale_noise":
             set_metadata_embedding(unet,1)
