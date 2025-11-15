@@ -262,8 +262,8 @@ def main(args):
                     '''accelerator.log({
                         f"concat_{label}_{b}":wandb.Image(concat_images_horizontally(concat_images))
                     })'''
-            real=image_processor.denormalize(torch.cat(real))
-            fake=image_processor.denormalize(torch.cat(fake))
+            real=image_processor.denormalize(torch.cat(real).to(torch.float32))
+            fake=image_processor.denormalize(torch.cat(fake).to(torch.float32))
             fid.update(real,True)
             fid.update(fake,False)
             fid_score = fid.compute().item()
