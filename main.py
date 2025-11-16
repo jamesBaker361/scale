@@ -59,6 +59,7 @@ parser.add_argument("--n_test",type=int,default=4)
 parser.add_argument("--num_inference_steps",type=int,default=10)
 parser.add_argument("--val_interval",type=int,default=10)
 parser.add_argument("--warmup_steps",type=int,default=2000)
+parser.add_argument("--hf_path_data",type=str,default="Rapidata/Animals-10")
 
 def main(args):
     accelerator=Accelerator(log_with="wandb",mixed_precision=args.mixed_precision,gradient_accumulation_steps=args.gradient_accumulation_steps)
@@ -147,6 +148,9 @@ def main(args):
         
         
         dataset=AnimalData(image_processor,tokenizer,dim=2**args.power2_dim)
+        if args.hf_path_data=="microsoft/cats_vs_dogs":
+            dataset=AnimalData(image_processor,tokenizer,dim=2**args.power2_dim,hf_path="microsoft/cats_vs_dogs",
+                               mapping=["cat","dog"],label_key="labels")
         accelerator.print("image size ",2**args.power2_dim)
 
         test_size=int(len(dataset)//10)
