@@ -156,7 +156,7 @@ def main(args):
         test_size=int(len(dataset)//10)
         train_size=int(len(dataset)-(test_size*2))
 
-        
+        accelerator.print('train_size, test_size,test_size',train_size, test_size,test_size)
         # Set seed for reproducibility
         generator = torch.Generator().manual_seed(42)
 
