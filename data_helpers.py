@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 from datasets import load_dataset
 from diffusers.image_processor import VaeImageProcessor
 from transformers import CLIPTokenizer
+import datasets
 
 class AnimalData(Dataset):
     def __init__(self,image_processor:VaeImageProcessor,
@@ -11,7 +12,8 @@ class AnimalData(Dataset):
                  mapping=['Butterfly', 'Cat', 'Chicken', 'Cow', 'Dog', 'Elephant', 'Horse', 'Sheep', 'Spider', 'Squirrel' ],
                  label_key:str="label"):
         super().__init__()
-        self.data=load_dataset(hf_path,split="train")
+        self.data=load_dataset(hf_path,split="train").cast_column("image",datasets.Image())
+        self.data=self.data.filter(lambda row: row["image"].mode=="RGB")
         self.image_processor=image_processor
         self.tokenizer=tokenizer
         self.dim=dim
